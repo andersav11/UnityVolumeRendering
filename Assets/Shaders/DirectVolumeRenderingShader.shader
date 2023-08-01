@@ -328,7 +328,10 @@ Shader "VolumeRendering/DirectVolumeRenderingShader"
                     // Apply 1D transfer function
 #if !TF2D_ON
                     float4 src = getTex3DColour(currPos);
-                    //src.a = getTF1DColour(density).a;
+                    // src.r = (src.r + getTF1DColour(density).r)/2;
+                    // src.g = (src.g + getTF1DColour(density).g)/2;
+                    // src.b = (src.b + getTF1DColour(density).b)/2;
+                    src.a = getTF1DColour(density).a;
                     if (src.a < _MinVal)
                     {
                         continue;
