@@ -229,7 +229,7 @@ namespace UnityVolumeRendering
             Debug.Log("Async texture generation. Hold on.");
 
             Texture3D.allowThreadedTextureCreation = true;
-            TextureFormat texformat = SystemInfo.SupportsTextureFormat(TextureFormat.RHalf) ? TextureFormat.RHalf : TextureFormat.RFloat;
+            TextureFormat texformat = SystemInfo.SupportsTextureFormat(TextureFormat.RGBAHalf) ? TextureFormat.RGBAHalf : TextureFormat.RGBAFloat;
 
             float minValue = 0;
             float maxValue = 0;
@@ -245,26 +245,39 @@ namespace UnityVolumeRendering
             progressHandler.EndStage();
 
             Texture3D texture = null;
-            bool isHalfFloat = texformat == TextureFormat.RHalf;
+            bool isHalfFloat = texformat == TextureFormat.RGBAHalf;
 
             progressHandler.StartStage(0.8f, "Creating texture");
             try
             {
-                int dimension = dimX * dimY * dimZ;
-                int sliceDimension = dimX * dimY;
+                int dimension = dimX * dimY * dimZ * 4;
+                int sliceDimension = dimX * dimY *4;
+
+                Debug.Log("Dimension = " + dimension);
+                Debug.Log("Slice Dimension = " + sliceDimension);
+                Debug.Log("Data Length = " + data.Length);
+                Debug.Log(data[0] +" "+ data[1] +" "+ data[2] +" "+ data[3] +" "+ data[4] +" "+ data[5] +" "+ data[6] +" "+ data[7]);
 
                 if (isHalfFloat)
                 {
                     progressHandler.StartStage(0.8f, "Allocating pixel data");
-                    NativeArray<ushort> pixelBytes = new NativeArray<ushort>(data.Length, Allocator.Persistent);
+                    NativeArray<ushort> pixelBytes = new NativeArray<ushort>(data.Length*4, Allocator.Persistent);
 
                     await Task.Run(() => {
                         for (int i = 0; i < dimension;)
                         {
                             progressHandler.ReportProgress(i, dimension, "Copying slice data.");
-                            for (int j = 0; j < sliceDimension; j++, i++)
+                            for (int j = 0; j < sliceDimension; j++)
                             {
-                                pixelBytes[i] = Mathf.FloatToHalf((float)(data[i] - minValue) / maxRange);
+                                for (int k = 0; k < 4; k++, i++)
+                                {
+                                    pixelBytes[i] = Mathf.FloatToHalf((float)(data[i] - minValue) / maxRange);
+                                }
+                            }
+                            if(i==pixelBytes.Length)
+                            {
+                                Debug.Log("Pixels completed = "+i);
+                                Debug.Log("Pixel Byte Size = "+pixelBytes.Length);
                             }
                         }
                     });
@@ -281,15 +294,18 @@ namespace UnityVolumeRendering
                 else
                 {
                     progressHandler.StartStage(0.8f, "Allocating pixel data");
-                    NativeArray<float> pixelBytes = new NativeArray<float>(data.Length, Allocator.Persistent);
+                    NativeArray<float> pixelBytes = new NativeArray<float>(data.Length*4, Allocator.Persistent);
 
                     await Task.Run(() => {
                         for (int i = 0; i < dimension;)
                         {
                             progressHandler.ReportProgress(i, dimension, "Copying slice data.");
-                            for (int j = 0; j < sliceDimension; j++, i++)
+                            for (int j = 0; j < sliceDimension*4; j++, i++)
                             {
-                                pixelBytes[i] = (float)(data[i] - minValue) / maxRange;
+                                for (int k = 0; k < 4; k++, i++)
+                                {
+                                    pixelBytes[i] = Mathf.FloatToHalf((float)(data[i] - minValue) / maxRange);
+                                }
                             }
                         }
                     });

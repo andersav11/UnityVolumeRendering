@@ -1,4 +1,4 @@
-﻿Shader "VolumeRendering/DirectVolumeRenderingShader"
+Shader "VolumeRendering/DirectVolumeRenderingShader"
 {
     Properties
     {
@@ -193,7 +193,12 @@
                 return interpolateTricubicFast(_DataTex, float3(pos.x, pos.y, pos.z), _TextureSize);
 #else
                 return tex3Dlod(_DataTex, float4(pos.x, pos.y, pos.z, 0.0f));
+                //return tex3D(_DataTex, float3(pos.x, pos.y, pos.z));
 #endif
+            }
+            float4 getTex3DColour(float3 pos)
+            {
+                return tex3Dlod(_DataTex, float4(pos.x, pos.y, pos.z, 2.0f));
             }
 
             // Gets the gradient at the specified position
@@ -322,9 +327,14 @@
 
                     // Apply 1D transfer function
 #if !TF2D_ON
-                    float4 src = getTF1DColour(density);
-                    if (src.a == 0.0)
+                    float4 src = getTex3DColour(currPos);
+                    //src.a = getTF1DColour(density).a;
+                    if (src.a < _MinVal)
+                    {
                         continue;
+                    } else {
+                        src.a = 0.2f;
+                    }
 #endif
 
                     // Calculate gradient (needed for lighting and 2D transfer functions)
@@ -358,7 +368,7 @@
                     // Early ray termination
 #if defined(RAY_TERMINATE_ON)
                     if (col.a > OPACITY_THRESHOLD) {
-                        break;
+                        break;  
                     }
 #endif
                 }

@@ -88,7 +88,7 @@ namespace UnityVolumeRendering
             List<string> imagePaths = series.GetFiles().Select(f => f.GetFilePath()).ToList();
 
             Vector3Int dimensions = GetVolumeDimensions(imagePaths);
-            int[] data = FillSequentialData(dimensions, imagePaths);
+            float[] data = FillSequentialData(dimensions, imagePaths);
             VolumeDataset dataset = FillVolumeDataset(data, dimensions);
 
             dataset.FixDimensions();
@@ -104,7 +104,7 @@ namespace UnityVolumeRendering
             await Task.Run(() => { imagePaths = series.GetFiles().Select(f => f.GetFilePath()).ToList(); }); ;
 
             Vector3Int dimensions = GetVolumeDimensions(imagePaths);
-            int[] data = FillSequentialData(dimensions, imagePaths);
+            float[] data = FillSequentialData(dimensions, imagePaths);
             dataset = await FillVolumeDatasetAsync(data, dimensions);
             dataset.FixDimensions();
 
@@ -155,9 +155,9 @@ namespace UnityVolumeRendering
         /// <param name="dimensions">The XYZ dimensions of the volume.</param>
         /// <param name="paths">The set of image paths comprising the volume.</param>
         /// <returns>The set of sequential values for the volume.</returns>
-        private int[] FillSequentialData(Vector3Int dimensions, List<string> paths)
+        private float[] FillSequentialData(Vector3Int dimensions, List<string> paths)
         {
-            var data = new List<int>(dimensions.x * dimensions.y * dimensions.z);
+            var data = new List<float>(dimensions.x * dimensions.y * dimensions.z *4);
             var texture = new Texture2D(1, 1);
 
             foreach (var path in paths)
@@ -172,7 +172,18 @@ namespace UnityVolumeRendering
                 }
 
                 Color[] pixels = texture.GetPixels(); // Order priority: X -> Y -> Z
-                int[] imageData = DensityHelper.ConvertColorsToDensities(pixels);
+                float[] imageData = new float[pixels.Length *4];
+                int j = 0;
+                for (int i = 0; i < pixels.Length;i++)
+                {
+                        imageData[j]=pixels[i].r;
+                        imageData[j+1]=pixels[i].g;
+                        imageData[j+2]=pixels[i].b;
+                        imageData[j+3]=pixels[i].a;
+                        j=j+4;
+                }
+                
+                DensityHelper.ConvertColorsToDensities(pixels);
 
                 data.AddRange(imageData);
             }
@@ -186,7 +197,7 @@ namespace UnityVolumeRendering
         /// <param name="data">Sequential value data for a volume.</param>
         /// <param name="dimensions">The XYZ dimensions of the volume.</param>
         /// <returns>The wrapped volume data.</returns>
-        private VolumeDataset FillVolumeDataset(int[] data, Vector3Int dimensions)
+        private VolumeDataset FillVolumeDataset(float[] data, Vector3Int dimensions)
         {
             string name = Path.GetFileName(directoryPath);
 
@@ -195,7 +206,7 @@ namespace UnityVolumeRendering
 
             return dataset;
         }
-        private async Task<VolumeDataset> FillVolumeDatasetAsync(int[] data, Vector3Int dimensions)
+        private async Task<VolumeDataset> FillVolumeDatasetAsync(float[] data, Vector3Int dimensions)
         {
             VolumeDataset dataset = ScriptableObject.CreateInstance<VolumeDataset>();
             string name = Path.GetFileName(directoryPath);
@@ -205,10 +216,10 @@ namespace UnityVolumeRendering
           
             return dataset;
         }
-        private void FillVolumeInternal(VolumeDataset dataset,string name,int[] data, Vector3Int dimensions)
+        private void FillVolumeInternal(VolumeDataset dataset,string name,float[] data, Vector3Int dimensions)
         {
             dataset.datasetName = name;
-            dataset.data = Array.ConvertAll(data, new Converter<int, float>((int val) => { return Convert.ToSingle(val); }));
+            dataset.data = data;
             dataset.dimX = dimensions.x;
             dataset.dimY = dimensions.y;
             dataset.dimZ = dimensions.z;
